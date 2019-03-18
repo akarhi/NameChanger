@@ -16,7 +16,7 @@ async def on_ready():
     
 @client.event
 async def on_member_update(before, after):
-    #217149575302086657 vit
+    #ID's for the person you want to keep the name change
     Name1 = 
     Name2 = 
     Name3 = 
@@ -30,6 +30,7 @@ async def on_member_update(before, after):
         elif Name2 == b:
             await after.edit(nick=Name())
     
+#checks the name if the person's name is not the same on the list
 def namecheck(newname):
     filename = "NameList.txt"
     found = True
@@ -45,6 +46,7 @@ def namecheck(newname):
     f.close()
     return found
 
+#the function that will change the person's name to a random list
 def Name():
     filename = "NameList.txt"
     found = False
@@ -56,5 +58,6 @@ def Name():
         print("The file doesn’t exist!")
     f.close()
     return content[random.randint(0,32)]
-        
+
+#the bot's token to run
 client.run("Insert Token")
