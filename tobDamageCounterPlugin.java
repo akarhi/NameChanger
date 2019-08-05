@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Bryan Chau(RSN:Laura Brehm) <https://github.com/akarhi>
+ * Copyright (c) 2019, Bryan Chau(RSN:Laura Brehm) <https://github.com/akarhi>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,18 +24,9 @@
  */
 
 package net.runelite.client.plugins.tobdamagecount;
-
 import javax.inject.Inject;
 import java.text.DecimalFormat;
-
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.NPC;
-import net.runelite.api.NpcID;
-import net.runelite.api.Skill;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Actor;
-import net.runelite.api.Player;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.GameTick;
@@ -59,15 +50,16 @@ import net.runelite.client.eventbus.Subscribe;
 		enabledByDefault = false
 )
 
-public class damagecounter extends Plugin
+public class tobDamageCounterPlugin extends Plugin
 {
 	private int currentWorld = -1;
 	private int DamageCount = 0;
 	private int currenthpxp = -1; // checking the current hp xp so be easier to find
 	private String BossName = null; //to ID the boss to calculate the damage
 	private int DamageTaken = 0;
+	private int DamageHeal = 0;
 	private boolean status = true; //default boolean alive = true, dead = false
-	//formatting the number for damage taken and dealt with to look beeter
+	//formatting the number for damage taken and dealt with to look better
 	private static final DecimalFormat DAMAGEFORMAT = new DecimalFormat("#,###");
 	private static final double XP_RATIO = 1.3333;
 	private static final double BOSS_MODIFIER = 1.05;
@@ -211,6 +203,16 @@ public class damagecounter extends Plugin
 
 	}
 
+	@Subscribe
+	//will add the boss health mental note make sure to add validation to which boss
+	private void BossHeal(Hitsplat heal)
+	{
+		if (heal.getHitsplatType() == Hitsplat.HitsplatType.HEAL)
+		{
+			DamageHeal += heal.getAmount();
+		}
+	}
+
 	//will check for the monster if it died works only on ToB Bosses
 	/*Verzik has three phases so the program will add up all the damage and prints it into one message
 	because every time she phases she "dies" so making sure the counter doesn't print out the damage for phase 1, 2,
@@ -247,7 +249,7 @@ public class damagecounter extends Plugin
 		if (DamageCount != 0) {
 			if (id == MAIDEN_REGION || id == MAIDEN_REGION_1)
 			{
-				percent = (DamageCount / (double) MAIDENHP) * 100;
+				percent = (DamageCount / (double) (MAIDENHP + DamageHeal)) * 100;
 			}
 			else if (id == BLOAT_REGION)
 			{
@@ -255,19 +257,19 @@ public class damagecounter extends Plugin
 			}
 			else if (id == NYLOCAS_REGION)
 			{
-				percent = (DamageCount / (double) NYLOHP) * 100;
+				percent = (DamageCount / (double) (NYLOHP + DamageHeal)) * 100;
 			}
 			else if (id == SOTETSEG_REGION || id == SOTETSEG_REGION2)
 			{
-				percent = (DamageCount / (double) SOTHP) * 100;
+				percent = (DamageCount / (double) (SOTHP + DamageHeal)) * 100;
 			}
 			else if (id == XARPUS_REGION)
 			{
-				percent = (DamageCount / (double) XARPUSHP) * 100;
+				percent = (DamageCount / (double) (XARPUSHP + DamageHeal)) * 100;
 			}
 			else if (id == VERZIK_REGION)
 			{
-				percent = (DamageCount / (double) VERZIKHP) * 100;
+				percent = (DamageCount / (double) (VERZIKHP + DamageHeal)) * 100;
 			}
 		}
 		return percent;
@@ -278,6 +280,7 @@ public class damagecounter extends Plugin
 	{
 		DamageCount = 0;
 		DamageTaken = 0;
+		DamageHeal = 0;
 		BossName = null;
 		status = ALIVE;
 	}
@@ -319,11 +322,11 @@ public class damagecounter extends Plugin
 
 	@Subscribe
 	//whenever you have died in tob you will get a death message with damage
-	// made sure the message works at ToB area or else it will message every where
-	private void Death(LocalPlayerDeath death)
+	//made sure the message works at ToB area or else it will message every where
+	private void Death(LocalPlayerDeath playerDeath)
 	{
 		String DeathMessage = "FUCKING PLANKER! You did " + DAMAGEFORMAT.format(DamageCount) + " damage to " +
-				BossName + "! Try not to plank again retard!";
+				BossName + "! Try not to plank again retard!/nThe boss healed: " + DamageHeal;
 		String MessageTaken = "You have taken " + DAMAGEFORMAT.format(DamageTaken) + " damage from this fight!";
 		for (int i = 0; i < ToB_Region.length; i++)
 		{
@@ -336,7 +339,9 @@ public class damagecounter extends Plugin
 				//status will become "dead" after you died in the fight
 				status = DEAD;
 			}
+
 		}
+		sendChatMessage(DeathMessage);
 	}
 
 	//sends a message saying this "You have done XYZ damage to boss name! or the death message
@@ -349,7 +354,7 @@ public class damagecounter extends Plugin
 				.build();
 		chatMessangerManager.queue(
 				QueuedMessage.builder()
-						.type(ChatMessageType.GAMEMESSAGE)
+						.type(ChatMessageType.CONSOLE)
 						.runeLiteFormattedMessage(message)
 						.build());
 	}
